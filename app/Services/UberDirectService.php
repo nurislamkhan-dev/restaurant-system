@@ -14,12 +14,33 @@ class UberDirectService
     protected OrderModel $orderModel;
 
     protected string $baseUrl = 'https://api.uber.com/v1';
+    protected string $oauthTokenUrl = 'https://login.uber.com/oauth/v2/token';
 
     public function __construct()
     {
         $this->httpClient    = Services::curlrequest();
         $this->deliveryModel = new DeliveryModel();
         $this->orderModel    = new OrderModel();
+
+        // Allow sandbox/prod switching via env without code changes.
+        // Defaults remain production unless explicitly overridden.
+        $env = strtolower(trim((string) (getenv('UBER_ENV') ?: '')));
+        $env = $env === 'sandbox' ? 'sandbox' : 'production';
+
+        $baseUrlOverride = trim((string) (getenv('UBER_API_BASE_URL') ?: ''));
+        $tokenUrlOverride = trim((string) (getenv('UBER_OAUTH_TOKEN_URL') ?: ''));
+
+        if ($baseUrlOverride !== '') {
+            $this->baseUrl = rtrim($baseUrlOverride, '/');
+        } elseif ($env === 'sandbox') {
+            $this->baseUrl = 'https://sandbox-api.uber.com/v1';
+        }
+
+        if ($tokenUrlOverride !== '') {
+            $this->oauthTokenUrl = $tokenUrlOverride;
+        } elseif ($env === 'sandbox') {
+            $this->oauthTokenUrl = 'https://sandbox-login.uber.com/oauth/v2/token';
+        }
     }
 
     public function requestDelivery(array $order): ?array
@@ -224,7 +245,7 @@ class UberDirectService
         }
 
         try {
-            $response = $this->httpClient->post('https://login.uber.com/oauth/v2/token', [
+            $response = $this->httpClient->post($this->oauthTokenUrl, [
                 'form_params' => [
                     'client_id'     => $clientId,
                     'client_secret' => $clientSecret,
