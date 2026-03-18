@@ -9,7 +9,7 @@ CodeIgniter 4 backend that:
 
 ## Environment setup (do this first)
 
-1) Copy `env` → `.env`
+1) Copy `env.example` → `.env`
 
 2) Update `.env` values:
 
