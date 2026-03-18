@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Models\DeliveryJobModel;
 use App\Models\OrderItemModel;
 use App\Models\OrderModel;
 use App\Services\UberDirectService;
@@ -16,6 +17,7 @@ class Orders extends BaseController
     protected OrderModel $orderModel;
     protected OrderItemModel $orderItemModel;
     protected UberDirectService $uberDirectService;
+    protected DeliveryJobModel $deliveryJobModel;
     protected BaseConnection $db;
 
     public function __construct()
@@ -23,6 +25,7 @@ class Orders extends BaseController
         $this->orderModel       = new OrderModel();
         $this->orderItemModel   = new OrderItemModel();
         $this->uberDirectService= new UberDirectService();
+        $this->deliveryJobModel = new DeliveryJobModel();
         $this->db               = Database::connect();
     }
 
@@ -235,26 +238,25 @@ class Orders extends BaseController
                 ]);
             }
 
-            $items = $this->orderItemModel
+            $existingJob = $this->deliveryJobModel
                 ->where('order_id', $order['id'])
-                ->findAll();
+                ->whereIn('status', ['pending', 'processing'])
+                ->orderBy('id', 'DESC')
+                ->first();
 
-            $descriptionParts = [];
-            foreach ($items as $item) {
-                $descriptionParts[] = $item['quantity'] . 'x ' . $item['item_name'];
-            }
-
-            $order['items_description'] = implode(', ', $descriptionParts);
-
-            $delivery = $this->uberDirectService->requestDelivery($order);
-
-            if ($delivery === null) {
-                log_message('error', 'Orders::updateStatus Uber Direct request failed', ['order_id' => $id]);
+            if (! $existingJob) {
+                $this->deliveryJobModel->insert([
+                    'order_id'    => $order['id'],
+                    'job_type'    => 'uber_direct',
+                    'status'      => 'pending',
+                    'attempts'    => 0,
+                    'created_at'  => date('Y-m-d H:i:s'),
+                ]);
+                log_message('info', 'Orders::updateStatus queued uber direct delivery', ['order_id' => $id]);
             } else {
-                log_message('info', 'Orders::updateStatus Uber Direct requested', [
-                    'order_id'         => $id,
-                    'delivery_id'      => $delivery['id'] ?? null,
-                    'delivery_status'  => $delivery['status'] ?? null,
+                log_message('info', 'Orders::updateStatus uber direct job already queued', [
+                    'order_id' => $id,
+                    'job_id'   => $existingJob['id'],
                 ]);
             }
         }

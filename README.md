@@ -75,7 +75,7 @@ See `docs/DatabaseSchema.md`.
 
 ## Bonus (optional) notes
 
-- **Retry logic**: not implemented (would typically wrap Uber API calls with backoff/retry).
+- **Retry logic**: implemented for Uber Direct delivery creation (exponential backoff; only retries transient errors). See `docs/API.md`.
 - **Logging**: uses `log_message()` throughout controllers/services.
-- **Webhook authentication**: not implemented (can be added via a shared secret header verification).
-- **Queue worker**: not implemented (delivery requests currently happen inline on status change).
+- **Webhook authentication**: implemented for webhook endpoints via `X-Webhook-Secret` (configure `UBER_EATS_WEBHOOK_SECRET` and `UBER_DIRECT_WEBHOOK_SECRET`).
+- **Queue worker**: implemented (website orders enqueue delivery jobs; run `php spark deliveries:work`).

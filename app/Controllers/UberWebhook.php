@@ -25,6 +25,11 @@ class UberWebhook extends BaseController
 
     public function uberEatsOrders()
     {
+        if (! $this->isValidWebhookSecret('UBER_EATS_WEBHOOK_SECRET')) {
+            log_message('warning', 'UberWebhook::uberEatsOrders unauthorized webhook');
+            return $this->failUnauthorized('Unauthorized webhook');
+        }
+
         $payload = $this->request->getJSON(true);
 
         if (! $payload) {
@@ -142,6 +147,11 @@ class UberWebhook extends BaseController
 
     public function uberDirectStatus()
     {
+        if (! $this->isValidWebhookSecret('UBER_DIRECT_WEBHOOK_SECRET')) {
+            log_message('warning', 'UberWebhook::uberDirectStatus unauthorized webhook');
+            return $this->failUnauthorized('Unauthorized webhook');
+        }
+
         $payload = $this->request->getJSON(true);
 
         if (! $payload) {

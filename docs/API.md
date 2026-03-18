@@ -55,6 +55,10 @@ Behavior:
 
 - **POST** `/webhook/uber-eats/orders`
 
+Headers:
+
+- `X-Webhook-Secret: <your-secret>` (required if `UBER_EATS_WEBHOOK_SECRET` is set)
+
 Example payload:
 
 ```json
@@ -80,6 +84,10 @@ Behavior:
 
 - **POST** `/webhook/uber-direct/status`
 
+Headers:
+
+- `X-Webhook-Secret: <your-secret>` (required if `UBER_DIRECT_WEBHOOK_SECRET` is set)
+
 Behavior:
 
 - Locates delivery by `deliveries.external_delivery_id` using `delivery_id` (or `id`) from payload
@@ -89,4 +97,51 @@ Behavior:
   - `delivered`
   - `cancelled`
 - Updates `deliveries.delivery_status` and stores raw webhook payload for auditing
+
+---
+
+## Uber Direct retry behavior
+
+When creating an Uber Direct delivery (triggered by setting a **website** order to `READY_FOR_PICKUP`), the delivery is queued into `delivery_jobs` and processed by the worker.
+
+Within a single Uber Direct API call, the server will retry on **transient failures**:
+
+- HTTP `408`, `425`, `429`, `500`, `502`, `503`, `504`
+- network/timeout exceptions
+
+Defaults:
+
+- max attempts: `3`
+- base delay: `250ms` (exponential backoff)
+- max delay: `4000ms`
+
+Config (`.env`):
+
+- `UBER_DIRECT_RETRY_MAX_ATTEMPTS`
+- `UBER_DIRECT_RETRY_BASE_DELAY_MS`
+- `UBER_DIRECT_RETRY_MAX_DELAY_MS`
+
+De-duplication:
+
+- If a delivery already exists for the order (`deliveries` has a row for `order_id` with `provider=uber_direct`), the system will **not** create another delivery.
+
+## Queue worker (delivery jobs)
+
+When an order is updated to `READY_FOR_PICKUP` (website orders only), a row is inserted into `delivery_jobs` with `status=pending`.
+
+Run the worker:
+
+```bash
+php spark deliveries:work
+```
+
+Options:
+
+- `--once` process one job and exit
+- `--limit <n>` max jobs to process (default 50)
+
+Job retry (requeue) config (`.env`):
+
+- `DELIVERY_JOB_MAX_ATTEMPTS` (default 5)
+- `DELIVERY_JOB_RETRY_DELAY_SECONDS` (default 30)
 

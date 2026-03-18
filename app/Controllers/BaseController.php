@@ -42,4 +42,26 @@ abstract class BaseController extends Controller
         // Preload any models, libraries, etc, here.
         // $this->session = service('session');
     }
+
+    protected function isValidWebhookSecret(string $envKey, string $headerName = 'X-Webhook-Secret'): bool
+    {
+        $expected = getenv($envKey) ?: '';
+        $expected = trim((string) $expected);
+        $expected = trim($expected, "\"'");
+
+        // If no secret is configured, don't block requests (dev-friendly) but log a warning.
+        if ($expected === '') {
+            log_message('warning', 'Webhook secret not configured: {envKey}', ['envKey' => $envKey]);
+            return true;
+        }
+
+        $provided = (string) ($this->request->getHeaderLine($headerName) ?? '');
+        $provided = trim($provided);
+
+        if ($provided === '') {
+            return false;
+        }
+
+        return hash_equals($expected, $provided);
+    }
 }
