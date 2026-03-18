@@ -143,7 +143,7 @@ Then log in at `http://localhost:8080/` using:
 - Email: `admin@example.com`
 - Password: `admin1234`
 
-For a full end-to-end walkthrough (including Uber sandbox), see `IMPLEMENTATION.md`.
+For a full end-to-end walkthrough (including Uber sandbox), see [`IMPLEMENTATION.md`](./IMPLEMENTATION.md).
 
 ## API documentation
 

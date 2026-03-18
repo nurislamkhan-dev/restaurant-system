@@ -62,15 +62,15 @@ class Orders extends BaseController
                 return $this->failValidationErrors('Each item qty must be at least 1');
             }
 
-            $price = null;
-            if (array_key_exists('price', $item) && $item['price'] !== null && $item['price'] !== '') {
-                if (! is_numeric($item['price'])) {
-                    return $this->failValidationErrors('Item price must be numeric when provided');
-                }
-                $price = (float) $item['price'];
-                if ($price < 0) {
-                    return $this->failValidationErrors('Item price cannot be negative');
-                }
+            if (! array_key_exists('price', $item) || $item['price'] === null || $item['price'] === '') {
+                return $this->failValidationErrors('Each item must have price');
+            }
+            if (! is_numeric($item['price'])) {
+                return $this->failValidationErrors('Item price must be numeric');
+            }
+            $price = (float) $item['price'];
+            if ($price < 0) {
+                return $this->failValidationErrors('Item price cannot be negative');
             }
 
             $items[] = [
@@ -79,9 +79,7 @@ class Orders extends BaseController
                 'price'     => $price,
             ];
 
-            if ($price !== null) {
-                $total += $qty * $price;
-            }
+            $total += $qty * $price;
         }
 
         $this->db->transStart();
@@ -93,7 +91,7 @@ class Orders extends BaseController
             'phone'              => $data['phone'],
             'address'            => $data['address'],
             'status'             => 'pending',
-            'total_amount'       => $total > 0 ? $total : null,
+            'total_amount'       => $total,
             'source_raw_payload' => json_encode($data),
             'created_at'         => date('Y-m-d H:i:s'),
         ]);

@@ -349,13 +349,34 @@ curl -sS "http://localhost:8080/api/orders"
 
 ## 12) Test Uber Direct status webhook (manual sandbox simulation)
 
-When your system creates a delivery, it stores `deliveries.external_delivery_id`.
+When your system creates a delivery, it stores `deliveries.external_delivery_id` (Uber’s delivery id).
+
+How to find it:
+
+- From the API: `GET /api/orders` → check `delivery.external_delivery_id`
+- From the DB (example SQL):
+
+```sql
+SELECT id, order_id, provider, external_delivery_id, delivery_status
+FROM deliveries
+ORDER BY id DESC
+LIMIT 5;
+```
 
 To simulate status updates, POST to:
 
 - `/webhook/uber-direct/status`
 
 Example payloads:
+
+Allowed statuses:
+
+- `courier_assigned`
+- `courier_picked_up`
+- `delivered`
+- `cancelled`
+
+The webhook accepts either `delivery_id` or `id` in the JSON payload (both map to `deliveries.external_delivery_id`).
 
 ```bash
 curl -sS -X POST "http://localhost:8080/webhook/uber-direct/status" \

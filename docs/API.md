@@ -2,6 +2,17 @@
 
 Base URL depends on your `app.baseURL` / web server setup.
 
+### Dashboard (utilities)
+
+#### Get Uber sandbox OAuth token
+
+- **POST** `/dashboard/uber-sandbox-token`
+
+Behavior:
+
+- Requests an OAuth token from Uber (sandbox when `UBER_ENV=sandbox`) server-side
+- Returns the token payload so you can copy/paste for sandbox testing
+
 ### Website Orders API
 
 #### Create order
@@ -16,8 +27,8 @@ Request JSON:
   "phone": "+123456789",
   "address": "123 Main St",
   "items": [
-    { "name": "Burger", "qty": 1 },
-    { "name": "Fries", "qty": 2 }
+    { "name": "Burger", "qty": 1, "price": 5.50 },
+    { "name": "Fries", "qty": 2, "price": 2.00 }
   ]
 }
 ```
@@ -33,6 +44,12 @@ Behavior:
 - **GET** `/api/orders`
 
 Returns orders with items and latest delivery (if any).
+
+Delivery object (when present):
+
+- `provider`: `uber_direct`
+- `external_delivery_id`: Uber Direct delivery id
+- `delivery_status`: last known status (example: `courier_assigned`, `courier_picked_up`, `delivered`, `cancelled`)
 
 #### Update order status
 
@@ -67,7 +84,7 @@ Example payload:
   "customer_name": "Alice",
   "address": "45 Broadway",
   "items": [
-    { "name": "Pizza", "qty": 1 }
+    { "name": "Pizza", "qty": 1, "price": 12.50 }
   ]
 }
 ```
@@ -87,6 +104,15 @@ Behavior:
 Headers:
 
 - `X-Webhook-Secret: <your-secret>` (required if `UBER_DIRECT_WEBHOOK_SECRET` is set)
+
+Example payload:
+
+```json
+{
+  "delivery_id": "DELIVERY_ID_FROM_UBER",
+  "status": "courier_assigned"
+}
+```
 
 Behavior:
 
