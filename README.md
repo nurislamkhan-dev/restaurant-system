@@ -7,6 +7,35 @@ CodeIgniter 4 backend that:
 - requests **Uber Direct deliveries** when a website order becomes `READY_FOR_PICKUP`
 - receives **delivery status updates** via `POST /webhook/uber-direct/status`
 
+## Environment setup (do this first)
+
+1) Copy `env` → `.env`
+
+2) Update `.env` values:
+
+- **App**
+  - `CI_ENVIRONMENT = development`
+  - `app.baseURL = 'http://localhost:8080/'`
+- **Database**
+  - `database.default.hostname`
+  - `database.default.database`
+  - `database.default.username`
+  - `database.default.password`
+  - `database.default.port`
+- **Uber (sandbox/prod)**
+  - `UBER_CLIENT_ID`
+  - `UBER_CLIENT_SECRET`
+  - `CUSTOMER_ID` (Uber Direct customer id)
+  - `SCOPE`
+  - `RESTAURANT_NAME`, `RESTAURANT_ADDRESS`, `RESTAURANT_PHONE`
+  - Optional environment switch:
+    - `UBER_ENV = sandbox` (uses `sandbox-api.uber.com` + `sandbox-login.uber.com`)
+    - `UBER_ENV = production` (default; uses production hosts)
+    - Optional overrides: `UBER_API_BASE_URL`, `UBER_OAUTH_TOKEN_URL`
+- **Webhook secrets (optional but recommended)**
+  - `UBER_EATS_WEBHOOK_SECRET`
+  - `UBER_DIRECT_WEBHOOK_SECRET`
+
 ## Project structure (requirement mapping)
 
 This project runs on **CodeIgniter 4**, so runtime code is in `app/`:
@@ -37,19 +66,7 @@ composer install
 
 ### 2) Configure environment
 
-Copy `env` → `.env` and update:
-
-- **Database**
-  - `database.default.hostname`
-  - `database.default.database`
-  - `database.default.username`
-  - `database.default.password`
-- **Uber**
-  - `UBER_CLIENT_ID`
-  - `UBER_CLIENT_SECRET`
-  - `CUSTOMER_ID` (Uber Direct customer id)
-  - `SCOPE` (example: `eats.store eats.order`)
-  - `RESTAURANT_NAME`, `RESTAURANT_ADDRESS`, `RESTAURANT_PHONE`
+See **Environment setup** above.
 
 ### 3) Run migrations
 
@@ -77,6 +94,36 @@ The login form authenticates against the `users` table:
 - `status` must be `active`
 
 ### Create your first admin user
+
+#### Option A (recommended): seed via migration
+
+This repo includes a migration that inserts/updates a default admin user (idempotent by email):
+
+- `app/Database/Migrations/2026-03-18-140000_SeedDefaultUser.php`
+
+Run:
+
+```bash
+php spark migrate
+```
+
+It seeds:
+
+- Email: `nurislamkhan.dev@gmail.com`
+- Password hash (already stored in the migration)
+- Status: `active`
+
+Note: the seeded user **id may not be 1** (AUTO_INCREMENT can advance over time). Login uses **email + password**, not the numeric id.
+
+If you need to re-run only this seed migration:
+
+```bash
+php spark migrate:status
+php spark migrate:rollback --batch 5
+php spark migrate
+```
+
+#### Option B: create manually (SQL)
 
 1) Generate a password hash:
 
