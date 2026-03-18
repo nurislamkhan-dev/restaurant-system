@@ -63,7 +63,40 @@ php spark migrate
 php -S 127.0.0.1:8080 -t public
 ```
 
-Open `http://localhost:8080/dashboard`.
+Open:
+
+- `http://localhost:8080/` (login)
+- `http://localhost:8080/dashboard` (dashboard)
+
+## Dashboard login (required)
+
+The login form authenticates against the `users` table:
+
+- `email` must exist
+- `password` must be a **hashed** password (`password_hash()` / `password_verify()`)
+- `status` must be `active`
+
+### Create your first admin user
+
+1) Generate a password hash:
+
+```bash
+php -r "echo password_hash('admin1234', PASSWORD_DEFAULT) . PHP_EOL;"
+```
+
+2) Insert a user row (replace the hash):
+
+```sql
+INSERT INTO users (name, email, password, status, created_at)
+VALUES ('Admin', 'admin@example.com', '<PASTE_HASH_HERE>', 'active', NOW());
+```
+
+Then log in at `http://localhost:8080/` using:
+
+- Email: `admin@example.com`
+- Password: `admin1234`
+
+For a full end-to-end walkthrough (including Uber sandbox), see `IMPLEMENTATION.md`.
 
 ## API documentation
 
