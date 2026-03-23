@@ -147,11 +147,11 @@ For a full end-to-end walkthrough (including Uber sandbox), see [`IMPLEMENTATION
 
 ## API documentation
 
-See `docs/API.md`.
+See [`docs/API.md`](./docs/API.md).
 
 ## Database schema
 
-See `docs/DatabaseSchema.md`.
+See [`docs/DatabaseSchema.md`](./docs/DatabaseSchema.md).
 
 ## Bonus (optional) notes
 

@@ -25,6 +25,7 @@ class Filters extends BaseFilters
      * or [filter_name => [classname1, classname2, ...]]
      */
     public array $aliases = [
+        'devbaseurl'    => \App\Filters\DevBaseUrl::class,
         'csrf'          => CSRF::class,
         'toolbar'       => DebugToolbar::class,
         'honeypot'      => Honeypot::class,
@@ -51,6 +52,7 @@ class Filters extends BaseFilters
      */
     public array $required = [
         'before' => [
+            'devbaseurl', // development: match baseURL to request host (session/cookies)
             'forcehttps', // Force Global Secure Requests
             'pagecache',  // Web Page Caching
         ],

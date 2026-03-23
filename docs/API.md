@@ -2,6 +2,20 @@
 
 Base URL depends on your `app.baseURL` / web server setup.
 
+### Login
+
+#### Uber Eats sandbox — sign in with OAuth `access_token`
+
+- **POST** `/login/uber-sandbox`
+- **CSRF**: include hidden token (use the form on `/` or `/login`)
+
+Behavior:
+
+- **No extra fields**: Uses `UBER_CLIENT_ID` and `UBER_CLIENT_SECRET` from `.env` with `grant_type=client_credentials` and `SCOPE` / `UBER_SANDBOX_SCOPE` against `https://sandbox-login.uber.com/oauth/v2/token`. On success, creates a dashboard session and stores `uber_access_token` (and expiry/scope when returned).
+- **`uber_access_token` field** (optional): Paste a token you already obtained; session is created without calling the token URL again (sandbox / dev convenience).
+
+After this login, **Uber Eats sandbox** dashboard actions (`/dashboard/uber-eats/*`) prefer the session token when it is still valid.
+
 ### Dashboard (utilities)
 
 #### Get Uber sandbox OAuth token
@@ -10,8 +24,22 @@ Base URL depends on your `app.baseURL` / web server setup.
 
 Behavior:
 
-- Requests an OAuth token from Uber (sandbox when `UBER_ENV=sandbox`) server-side
-- Returns the token payload so you can copy/paste for sandbox testing
+- If you signed in via **Uber sandbox login**, returns the **session** token when still valid (`source: session`).
+- Otherwise requests a new token from `https://sandbox-login.uber.com/oauth/v2/token` using `.env` credentials (`source: oauth`).
+
+#### Uber Eats sandbox: get store
+- **POST** `/dashboard/uber-eats/store`
+
+Behavior:
+- Uses **session** `uber_access_token` when present (Uber sandbox login); otherwise obtains a token with client credentials
+- Calls `GET https://test-api.uber.com/v1/delivery/stores/{store_id}`
+
+#### Uber Eats sandbox: accept POS order
+- **POST** `/dashboard/uber-eats/accept-pos-order`
+
+Behavior:
+- Uses **session** `uber_access_token` when present (Uber sandbox login); otherwise obtains a token with client credentials
+- Calls `POST https://test-api.uber.com/v1/delivery/orders/{order_id}/accept_pos_order`
 
 ### Website Orders API
 

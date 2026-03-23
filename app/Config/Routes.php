@@ -7,10 +7,15 @@ use CodeIgniter\Router\RouteCollection;
  */
 $routes->match(['get', 'post'], '/', 'Home::index');
 $routes->match(['get', 'post'], 'login', 'Home::index');
+$routes->post('login/uber-sandbox', 'Home::uberSandboxLogin');
 
 // Dashboard (after login)
 $routes->match(['get', 'post'], 'dashboard', 'Home::dashboard');
 $routes->post('dashboard/uber-sandbox-token', 'Home::uberSandboxToken');
+$routes->post('dashboard/uber-eats/store', 'UberEatsSandbox::store');
+$routes->post('dashboard/uber-eats/accept-pos-order', 'UberEatsSandbox::acceptPosOrder');
+$routes->post('dashboard/uber-direct/quote', 'UberDirect::quote');
+$routes->post('dashboard/uber-direct/delivery', 'UberDirect::delivery');
 $routes->get('logout', 'Home::logout');
 
 // Website Order API

@@ -51,9 +51,11 @@ class UberDirectService
             return null;
         }
 
-        $customerId = getenv('CUSTOMER_ID') ?: getenv('UBER_CUSTOMER_ID');
+        $customerId = getenv('UBER_DIRECT_CUSTOMER_ID')
+            ?: getenv('CUSTOMER_ID')
+            ?: getenv('UBER_CUSTOMER_ID');
         if (! $customerId) {
-            log_message('error', 'UberDirectService requestDelivery missing CUSTOMER_ID');
+            log_message('error', 'UberDirectService requestDelivery missing UBER_DIRECT_CUSTOMER_ID or CUSTOMER_ID');
             return null;
         }
 
@@ -231,28 +233,148 @@ class UberDirectService
         return null;
     }
 
+    /**
+     * Uber Direct: POST /customers/{id}/delivery_quotes
+     * Address fields must be JSON-encoded strings in the request body (per Uber DAAS).
+     *
+     * @param array<string, mixed> $pickupAddress  e.g. street_address, city, state, zip_code, country
+     * @param array<string, mixed> $dropoffAddress
+     * @return array{ok: bool, status_code: int, data: array<string, mixed>}
+     */
+    public function deliveryQuote(array $pickupAddress, array $dropoffAddress): array
+    {
+        return $this->customerPostJson('/delivery_quotes', [
+            'pickup_address'  => json_encode($pickupAddress, JSON_UNESCAPED_SLASHES),
+            'dropoff_address' => json_encode($dropoffAddress, JSON_UNESCAPED_SLASHES),
+        ]);
+    }
+
+    /**
+     * Uber Direct: POST /customers/{id}/deliveries (full DAAS payload, including quote_id).
+     *
+     * @param array<string, mixed> $payload
+     * @return array{ok: bool, status_code: int, data: array<string, mixed>}
+     */
+    public function createDaasDelivery(array $payload): array
+    {
+        return $this->customerPostJson('/deliveries', $payload);
+    }
+
+    /**
+     * @param array<string, mixed> $json
+     * @return array{ok: bool, status_code: int, data: array<string, mixed>}
+     */
+    protected function customerPostJson(string $pathSuffix, array $json): array
+    {
+        $customerId = $this->resolveCustomerId();
+        if ($customerId === null) {
+            return [
+                'ok'          => false,
+                'status_code' => 0,
+                'data'        => [
+                    'error' => 'Missing UBER_DIRECT_CUSTOMER_ID or CUSTOMER_ID in .env',
+                ],
+            ];
+        }
+
+        $accessToken = $this->getAccessToken();
+        if (! $accessToken) {
+            return [
+                'ok'          => false,
+                'status_code' => 0,
+                'data'        => [
+                    'error' => 'Could not obtain OAuth access_token (check UBER_DIRECT_* or UBER_CLIENT_* and scope eats.deliveries)',
+                ],
+            ];
+        }
+
+        $url = $this->baseUrl . '/customers/' . rawurlencode($customerId) . $pathSuffix;
+
+        try {
+            $response = $this->httpClient->post($url, [
+                'headers' => [
+                    'Content-Type'  => 'application/json',
+                    'Authorization' => 'Bearer ' . $accessToken,
+                ],
+                'json'        => $json,
+                'http_errors' => false,
+                'timeout'     => 30,
+            ]);
+
+            $statusCode = $response->getStatusCode();
+            $body       = (string) $response->getBody();
+            $data       = json_decode($body, true);
+            $data       = is_array($data) ? $data : ['raw' => $body];
+
+            return [
+                'ok'          => $statusCode >= 200 && $statusCode < 300,
+                'status_code' => $statusCode,
+                'data'        => $data,
+            ];
+        } catch (\Throwable $e) {
+            log_message('error', 'UberDirectService customerPostJson: {message}', ['message' => $e->getMessage()]);
+
+            return [
+                'ok'          => false,
+                'status_code' => 0,
+                'data'        => ['error' => 'Request failed', 'message' => $e->getMessage()],
+            ];
+        }
+    }
+
+    protected function resolveCustomerId(): ?string
+    {
+        $id = getenv('UBER_DIRECT_CUSTOMER_ID')
+            ?: getenv('CUSTOMER_ID')
+            ?: getenv('UBER_CUSTOMER_ID');
+        $id = $id !== null && $id !== false ? trim((string) $id) : '';
+
+        return $id !== '' ? $id : null;
+    }
+
     protected function getAccessToken(): ?string
     {
-        $clientId     = getenv('UBER_CLIENT_ID');
-        $clientSecret = getenv('UBER_CLIENT_SECRET');
-        $grantType    = getenv('GRANT_TYPE') ?: 'client_credentials';
-        $scope        = getenv('SCOPE') ?: 'eats.store eats.order';
-        $scope        = trim($scope);
-        $scope        = trim($scope, "\"'");
+        $directId     = trim((string) (getenv('UBER_DIRECT_CLIENT_ID') ?: ''));
+        $directSecret = trim((string) (getenv('UBER_DIRECT_CLIENT_SECRET') ?: ''));
+        $useDirect    = $directId !== '' && $directSecret !== '';
+
+        if ($useDirect) {
+            $clientId     = $directId;
+            $clientSecret = $directSecret;
+            $grantType    = trim((string) (getenv('UBER_DIRECT_GRANT_TYPE') ?: 'client_credentials'));
+            $scope        = trim((string) (getenv('UBER_DIRECT_SCOPE') ?: 'eats.deliveries'));
+            $scope        = trim($scope, "\"'");
+            $tokenUrl     = trim((string) (getenv('UBER_DIRECT_OAUTH_TOKEN_URL') ?: ''));
+            if ($tokenUrl === '') {
+                $tokenUrl = trim((string) (getenv('UBER_OAUTH_TOKEN_URL') ?: ''));
+            }
+            if ($tokenUrl === '') {
+                $tokenUrl = 'https://auth.uber.com/oauth/v2/token';
+            }
+        } else {
+            $clientId     = getenv('UBER_CLIENT_ID');
+            $clientSecret = getenv('UBER_CLIENT_SECRET');
+            $grantType    = getenv('GRANT_TYPE') ?: 'client_credentials';
+            $scope        = getenv('SCOPE') ?: 'eats.store eats.order';
+            $scope        = trim((string) $scope);
+            $scope        = trim($scope, "\"'");
+            $tokenUrl     = $this->oauthTokenUrl;
+        }
 
         if (! $clientId || ! $clientSecret) {
             return null;
         }
 
         try {
-            $response = $this->httpClient->post($this->oauthTokenUrl, [
+            $response = $this->httpClient->post($tokenUrl, [
                 'form_params' => [
                     'client_id'     => $clientId,
                     'client_secret' => $clientSecret,
                     'grant_type'    => $grantType,
                     'scope'         => $scope,
                 ],
-                'timeout' => 10,
+                'timeout'     => 10,
+                'http_errors' => false,
             ]);
 
             $data = json_decode($response->getBody(), true) ?? [];
